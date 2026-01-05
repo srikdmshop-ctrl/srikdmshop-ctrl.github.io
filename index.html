@@ -588,7 +588,7 @@
                         <input type="text" id="customerName" required>
                     </div>
                     <div class="form-group">
-                        <label>Mobile Number *</label>
+                        <label>Phone Number *</label>
                         <input type="tel" id="customerMobile" required>
                     </div>
                     <div class="form-group">
@@ -868,48 +868,28 @@
             const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
             const total = subtotal + DELIVERY_CHARGE;
 
-            // Provide a unified payment panel with a Pay Now / Proceed to Pay button
-            if (paymentMode === 'Bank Transfer') {
+            // Simplified payment panel: show only the payment contact number and Pay Now
+            if (paymentMode === 'Bank Transfer' || paymentMode === 'UPI') {
+                const paymentContact = '9514157908';
                 paymentDetailsSection.innerHTML = `
                     <div class="payment-details">
-                        <h4>🏦 Bank Transfer Details</h4>
-                        <p><strong>Account Number:</strong> 3651371819</p>
-                        <p><strong>Bank Name:</strong> Kotak</p>
-                        <p><strong>IFSC Code:</strong> KKBK0008723</p>
-                        <p style="margin-top: 10px; color: #666; font-size: 0.9rem;">
-                            Click <strong>Proceed to Pay</strong> to open your UPI/payment app or use the bank app to transfer ₹${total}.
-                        </p>
+                        <h4>📱 Payment Contact</h4>
+                        <p style="font-size:1.25rem; font-weight:bold; color:#000;">UPI / Payment Number: ${paymentContact}</p>
+                        <p style="margin-top:8px; color:#666;">Use this number in your UPI/bank app to complete payment. Then return and confirm payment.</p>
                         <div style="margin-top:10px; display:flex; gap:8px;">
-                            <button class="category-btn" id="payNowBtn">Proceed to Pay</button>
+                            <button class="category-btn" id="payNowBtn">Pay Now (Open Payment App)</button>
+                            <button class="category-btn" id="copyUpiBtn">Copy Number</button>
                         </div>
                     </div>
                 `;
-                document.getElementById('payNowBtn').addEventListener('click', () => openPaymentApp('Bank Transfer', total));
-            } else if (paymentMode === 'UPI') {
-                paymentDetailsSection.innerHTML = `
-                    <div class="payment-details">
-                        <h4>📱 UPI Payment</h4>
-                        <p style="margin-bottom: 10px;">Scan the QR code below to make payment or use one of the alternate options:</p>
-                        <div class="qr-code-container">
-                            <img src="upi-qr.png" alt="UPI QR Code">
-                        </div>
-                        <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
-                            <button class="category-btn" id="payNowBtn">Open UPI App (Pay Now)</button>
-                            <button class="category-btn" id="payPhoneBtn">Pay Using UPI Number</button>
-                            <button class="category-btn" id="copyUpiBtn">Copy UPI Number</button>
-                        </div>
-                        <div style="margin-top:8px; color:#a00; font-size:0.95rem;">If the QR shows a "limit full" message, use the <strong>Pay Using UPI Number</strong> option or copy the UPI number to your banking app.</div>
-                    </div>
-                `;
-                document.getElementById('payNowBtn').addEventListener('click', () => openPaymentApp('UPI', total));
-                document.getElementById('payPhoneBtn').addEventListener('click', () => openPaymentApp('UPI_PHONE', total));
+                document.getElementById('payNowBtn').addEventListener('click', () => openPaymentApp('UPI_PHONE', total));
                 document.getElementById('copyUpiBtn').addEventListener('click', () => {
                     const upiNumber = '9514157908';
-                    navigator.clipboard?.writeText(upiNumber).then(() => {
-                        alert('UPI number copied to clipboard: ' + upiNumber);
-                    }).catch(() => {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(upiNumber).then(() => alert('Payment number copied: ' + upiNumber)).catch(()=>prompt('Copy this UPI number:', upiNumber));
+                    } else {
                         prompt('Copy this UPI number:', upiNumber);
-                    });
+                    }
                 });
             } else {
                 paymentDetailsSection.innerHTML = '';
