@@ -612,9 +612,16 @@
                     </div>
 
                     <div id="paymentActions">
-                        <div style="margin-bottom:8px;color:#444;font-size:0.95rem;">After clicking <strong>Pay Now</strong> complete payment in your banking/UPI app. Then click <strong>Confirm Payment</strong> to enable placing the order.</div>
-                        <button class="category-btn" id="confirmPaymentBtn" style="display:none; margin-bottom:8px;">I have paid — Confirm Payment</button>
+                        <div style="margin-bottom:8px;color:#444;font-size:0.95rem;">After clicking <strong>Pay Now</strong> complete payment in your banking/UPI app. Then click <strong>Confirm Payment</strong> to enable placing the order. If payment failed or was not completed, click <strong>Mark Not Confirmed</strong>.</div>
+                        <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+                            <button class="category-btn" id="confirmPaymentBtn" style="display:none;">I have paid — Confirm Payment</button>
+                            <button class="category-btn" id="markNotConfirmedBtn" style="display:none; background:#ff4757;">Mark Not Confirmed</button>
+                            <div id="paymentStatusLabel" style="margin-left:8px; font-weight:bold; color:#333; display:none;">Payment Status: Pending</div>
+                        </div>
                         <button class="checkout-btn" id="placeOrderBtn" disabled>Place Order via WhatsApp</button>
+                    </div>
+                    <div id="paymentNote" style="display:none; margin-top:8px; padding:10px; background:#fff7e6; border-left:4px solid #f1c40f; border-radius:6px; color:#333;">
+                        <strong>Payment Note:</strong> After completing payment, please attach your payment screenshot when sending the WhatsApp order. This helps us verify your payment faster.
                     </div>
                 </div>
                 
@@ -882,19 +889,37 @@
                 paymentDetailsSection.innerHTML = `
                     <div class="payment-details">
                         <h4>📱 UPI Payment</h4>
-                        <p style="margin-bottom: 10px;">Scan the QR code below to make payment or click <strong>Pay Now</strong> to open your UPI app:</p>
+                        <p style="margin-bottom: 10px;">Scan the QR code below to make payment or use one of the alternate options:</p>
                         <div class="qr-code-container">
                             <img src="upi-qr.png" alt="UPI QR Code">
                         </div>
-                        <div style="margin-top:10px; display:flex; gap:8px;">
-                            <button class="category-btn" id="payNowBtn">Pay Now</button>
+                        <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+                            <button class="category-btn" id="payNowBtn">Open UPI App (Pay Now)</button>
+                            <button class="category-btn" id="payPhoneBtn">Pay Using UPI Number</button>
+                            <button class="category-btn" id="copyUpiBtn">Copy UPI Number</button>
                         </div>
+                        <div style="margin-top:8px; color:#a00; font-size:0.95rem;">If the QR shows a "limit full" message, use the <strong>Pay Using UPI Number</strong> option or copy the UPI number to your banking app.</div>
                     </div>
                 `;
                 document.getElementById('payNowBtn').addEventListener('click', () => openPaymentApp('UPI', total));
+                document.getElementById('payPhoneBtn').addEventListener('click', () => openPaymentApp('UPI_PHONE', total));
+                document.getElementById('copyUpiBtn').addEventListener('click', () => {
+                    const upiNumber = '9514157908';
+                    navigator.clipboard?.writeText(upiNumber).then(() => {
+                        alert('UPI number copied to clipboard: ' + upiNumber);
+                    }).catch(() => {
+                        prompt('Copy this UPI number:', upiNumber);
+                    });
+                });
             } else {
                 paymentDetailsSection.innerHTML = '';
             }
+
+            // show/hide payment note depending on selection
+            try {
+                const noteEl = document.getElementById('paymentNote');
+                if (noteEl) noteEl.style.display = paymentMode ? 'block' : 'none';
+            } catch (e) {}
         });
 
         // Payment state and enabling logic
@@ -920,26 +945,44 @@
         document.getElementById('paymentMode').addEventListener('change', enablePlaceOrderIfReady);
 
         // Helper: attempt to open a UPI/payment intent. On mobile this should open installed apps.
+        function setPaymentStatus(status) {
+            const label = document.getElementById('paymentStatusLabel');
+            const confirmBtn = document.getElementById('confirmPaymentBtn');
+            const notConfirmedBtn = document.getElementById('markNotConfirmedBtn');
+            if (label) {
+                label.style.display = 'inline-block';
+                label.textContent = 'Payment Status: ' + status.replace(/^(.)/, s=>s.toUpperCase());
+                label.style.color = status === 'confirmed' ? '#0a0' : (status === 'pending' ? '#b85' : '#d33');
+            }
+            if (confirmBtn) confirmBtn.style.display = status === 'pending' ? 'inline-block' : 'none';
+            if (notConfirmedBtn) notConfirmedBtn.style.display = status === 'pending' ? 'inline-block' : 'none';
+        }
+
         function openPaymentApp(mode, amount) {
             // Replace this VPA with your actual merchant VPA if available
             const MERCHANT_VPA = 'muthumk1516-2@oksbi';
             const MERCHANT_NAME = 'SRI KDM Shop';
+            const MERCHANT_PHONE_UPI = '9514157908';
 
             // Amount should be a number (no currency symbol)
             const am = Number(amount) || 0;
+            // choose link based on mode
+            let upiUrl;
+            if (mode === 'UPI_PHONE' || mode === 'UPI_PHONE') {
+                // Some UPI apps accept phone@upi or phone@pay; we provide the phone as text and copy fallback
+                upiUrl = `upi://pay?pa=${encodeURIComponent(MERCHANT_PHONE_UPI + '@upi')}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${encodeURIComponent(am)}&cu=INR`;
+            } else {
+                upiUrl = `upi://pay?pa=${encodeURIComponent(MERCHANT_VPA)}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${encodeURIComponent(am)}&cu=INR`;
+            }
 
-            // Construct UPI deep link - most Android devices will open supported apps
-            const upiUrl = `upi://pay?pa=${encodeURIComponent(MERCHANT_VPA)}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${encodeURIComponent(am)}&cu=INR`;
-
-            // Mark payment as pending and show confirmation button when user returns
+            // Mark payment as pending and show confirmation/not-confirmed buttons when user returns
             paymentPending = true;
             paymentConfirmed = false;
             localStorage.setItem('srk_pay_pending', JSON.stringify({ mode, amount, ts: Date.now() }));
-            const confirmBtn = document.getElementById('confirmPaymentBtn');
-            if (confirmBtn) confirmBtn.style.display = 'inline-block';
+            setPaymentStatus('pending');
 
             // Attempt to open UPI intent (mobile) or fallback to new tab
-            window.open(upiUrl, '_blank');
+            try { window.open(upiUrl, '_blank'); } catch (e) { window.open(upiUrl); }
         }
 
         document.getElementById('placeOrderBtn').addEventListener('click', async () => {
@@ -1000,6 +1043,9 @@
                 `*💳 Payment Information:*%0A` +
                 `Payment Mode: ${payment}%0A` +
                 `Payment Status: ${orderRecord.paymentStatus}%0A`;
+            // Append payment note to WhatsApp message
+            const paymentNoteText = `%0A*📌 Payment Note:* Please attach your payment screenshot in the WhatsApp message when placing the order.`;
+            message += paymentNoteText;
 
             const whatsappNumber = '919514157908';
             const whatsappURL = `https://wa.me/${whatsappNumber}?text=${message}`;
@@ -1035,14 +1081,29 @@
 
         // Confirm payment button: user clicks after completing payment in external app
         const confirmBtnEl = document.getElementById('confirmPaymentBtn');
+        const notConfirmedBtnEl = document.getElementById('markNotConfirmedBtn');
         if (confirmBtnEl) {
             confirmBtnEl.addEventListener('click', () => {
                 paymentConfirmed = true;
                 paymentPending = false;
                 localStorage.removeItem('srk_pay_pending');
                 confirmBtnEl.style.display = 'none';
+                if (notConfirmedBtnEl) notConfirmedBtnEl.style.display = 'none';
+                setPaymentStatus('confirmed');
                 enablePlaceOrderIfReady();
                 alert('Payment confirmed. You can now place the order via WhatsApp.');
+            });
+        }
+        if (notConfirmedBtnEl) {
+            notConfirmedBtnEl.addEventListener('click', () => {
+                paymentConfirmed = false;
+                paymentPending = false;
+                localStorage.removeItem('srk_pay_pending');
+                if (confirmBtnEl) confirmBtnEl.style.display = 'none';
+                notConfirmedBtnEl.style.display = 'none';
+                setPaymentStatus('not confirmed');
+                enablePlaceOrderIfReady();
+                alert('Payment marked as NOT confirmed. Place Order remains disabled until payment is confirmed.');
             });
         }
 
@@ -1051,23 +1112,41 @@
             const pending = JSON.parse(localStorage.getItem('srk_pay_pending'));
             if (pending) {
                 const btn = document.getElementById('confirmPaymentBtn');
+                const notBtn = document.getElementById('markNotConfirmedBtn');
                 if (btn) btn.style.display = 'inline-block';
+                if (notBtn) notBtn.style.display = 'inline-block';
                 paymentPending = true;
+                setPaymentStatus('pending');
             }
         } catch (e) {}
 
         // When user returns to the page after opening the payment app, prompt to mark payment status
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden && paymentPending) {
-                const ok = confirm('Returned from payment. Click OK if payment completed, Cancel if still pending.');
+                const ok = confirm('Returned from payment. Did payment complete successfully?\n\nPress OK = Yes, Cancel = No');
                 if (ok) {
                     paymentConfirmed = true;
                     paymentPending = false;
                     localStorage.removeItem('srk_pay_pending');
                     const btn = document.getElementById('confirmPaymentBtn');
+                    const notBtn = document.getElementById('markNotConfirmedBtn');
                     if (btn) btn.style.display = 'none';
+                    if (notBtn) notBtn.style.display = 'none';
+                    setPaymentStatus('confirmed');
                     enablePlaceOrderIfReady();
                     alert('Payment marked as done. You can now place the order.');
+                } else {
+                    // user explicitly reported not completed
+                    paymentConfirmed = false;
+                    paymentPending = false;
+                    localStorage.removeItem('srk_pay_pending');
+                    const btn = document.getElementById('confirmPaymentBtn');
+                    const notBtn = document.getElementById('markNotConfirmedBtn');
+                    if (btn) btn.style.display = 'none';
+                    if (notBtn) notBtn.style.display = 'none';
+                    setPaymentStatus('not confirmed');
+                    enablePlaceOrderIfReady();
+                    alert('Payment marked as NOT confirmed. Place Order remains disabled until payment is confirmed.');
                 }
             }
         });
