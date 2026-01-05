@@ -596,15 +596,9 @@
                         <textarea id="customerAddress" required></textarea>
                     </div>
                     <div class="form-group">
-                        <label>Payment Mode *</label>
-                        <select id="paymentMode" required>
-                            <option value="">Select Payment Method</option>
-                            <option value="UPI">UPI/GPay/PhonePe</option>
-                            <option value="Bank Transfer">Bank Transfer</option>
-                        </select>
+                        <label>Payment</label>
+                        <div id="paymentDetailsSection"></div>
                     </div>
-                    
-                    <div id="paymentDetailsSection"></div>
 
                     <div class="form-group">
                         <label>Product Description / Notes</label>
@@ -612,7 +606,7 @@
                     </div>
 
                     <div id="paymentActions">
-                        <div style="margin-bottom:8px;color:#444;font-size:0.95rem;">After clicking <strong>Pay Now</strong> complete payment in your banking/UPI app. Then click <strong>Confirm Payment</strong> to enable placing the order. If payment failed or was not completed, click <strong>Mark Not Confirmed</strong>.</div>
+                        <div style="margin-bottom:8px;color:#444;font-size:0.95rem;">After clicking <strong>Pay Now</strong> complete payment in your payment app. Then click <strong>Confirm Payment</strong> to enable placing the order. If payment failed or was not completed, click <strong>Mark Not Confirmed</strong>.</div>
                         <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
                             <button class="category-btn" id="confirmPaymentBtn" style="display:none;">I have paid — Confirm Payment</button>
                             <button class="category-btn" id="markNotConfirmedBtn" style="display:none; background:#ff4757;">Mark Not Confirmed</button>
@@ -653,7 +647,7 @@
             { id: 8, name: 'USB Cable', category: 'Mobile Accessories', price: 249, icon: '🔌', image: 'images/usb-cable.svg', stock: 75 },
             { id: 9, name: 'Power Bank', category: 'Mobile Accessories', price: 1499, icon: '🔋', image: 'images/power-bank.svg', stock: 30 },
             { id: 10, name: 'Wireless Earbuds', category: 'Mobile Accessories', price: 2499, icon: '🎧', image: 'images/wireless-earbuds.svg', stock: 20 },
-            { id: 11, name: 'Pop Socket', category: 'Mobile Accessories', price: 9, icon: '⭕', image: 'images/pop-socket.svg', stock: 80 },
+            { id: 11, name: 'Pop Socket', category: 'Mobile Accessories', price: 99, icon: '⭕', image: 'images/pop-socket.svg', stock: 80 },
             { id: 12, name: 'Car Phone Holder', category: 'Mobile Accessories', price: 299, icon: '🚙', image: 'images/car-phone-holder.svg', stock: 40 }
         ];
 
@@ -860,47 +854,42 @@
         document.getElementById('proceedCheckoutBtn').addEventListener('click', () => {
             document.getElementById('checkoutForm').style.display = 'block';
             document.getElementById('proceedCheckoutBtn').style.display = 'none';
+            renderPaymentDetails();
         });
 
-        document.getElementById('paymentMode').addEventListener('change', (e) => {
+        // Populate the static payment details panel (single contact-based flow)
+        function renderPaymentDetails() {
             const paymentDetailsSection = document.getElementById('paymentDetailsSection');
-            const paymentMode = e.target.value;
             const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
             const total = subtotal + DELIVERY_CHARGE;
-
-            // Simplified payment panel: show only the payment contact number and Pay Now
-            if (paymentMode === 'Bank Transfer' || paymentMode === 'UPI') {
-                const paymentContact = '9514157908';
-                paymentDetailsSection.innerHTML = `
-                    <div class="payment-details">
-                        <h4>📱 Payment Contact</h4>
-                        <p style="font-size:1.25rem; font-weight:bold; color:#000;">UPI / Payment Number: ${paymentContact}</p>
-                        <p style="margin-top:8px; color:#666;">Use this number in your UPI/bank app to complete payment. Then return and confirm payment.</p>
-                        <div style="margin-top:10px; display:flex; gap:8px;">
-                            <button class="category-btn" id="payNowBtn">Pay Now (Open Payment App)</button>
-                            <button class="category-btn" id="copyUpiBtn">Copy Number</button>
-                        </div>
+            const paymentContact = '9514157908';
+            paymentDetailsSection.innerHTML = `
+                <div class="payment-details">
+                    <h4>📱 Payment Contact</h4>
+                    <p style="font-size:1.25rem; font-weight:bold; color:#000;">Payment Number: ${paymentContact}</p>
+                    <p style="margin-top:8px; color:#666;">Click <strong>Pay Now</strong> to open your payment app and pay using this contact number. Then return and confirm payment.</p>
+                    <div style="margin-top:10px; display:flex; gap:8px;">
+                        <button class="category-btn" id="payNowBtn">Pay Now (Open Payment App)</button>
+                        <button class="category-btn" id="copyNumberBtn">Copy Number</button>
                     </div>
-                `;
-                document.getElementById('payNowBtn').addEventListener('click', () => openPaymentApp('UPI_PHONE', total));
-                document.getElementById('copyUpiBtn').addEventListener('click', () => {
-                    const upiNumber = '9514157908';
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        navigator.clipboard.writeText(upiNumber).then(() => alert('Payment number copied: ' + upiNumber)).catch(()=>prompt('Copy this UPI number:', upiNumber));
-                    } else {
-                        prompt('Copy this UPI number:', upiNumber);
-                    }
-                });
-            } else {
-                paymentDetailsSection.innerHTML = '';
-            }
+                </div>
+            `;
 
-            // show/hide payment note depending on selection
-            try {
-                const noteEl = document.getElementById('paymentNote');
-                if (noteEl) noteEl.style.display = paymentMode ? 'block' : 'none';
-            } catch (e) {}
-        });
+            const payBtn = document.getElementById('payNowBtn');
+            const copyBtn = document.getElementById('copyNumberBtn');
+            if (payBtn) payBtn.addEventListener('click', () => openPaymentApp(total));
+            if (copyBtn) copyBtn.addEventListener('click', () => {
+                const num = paymentContact;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(num).then(() => alert('Payment number copied: ' + num)).catch(()=>prompt('Copy this payment number:', num));
+                } else {
+                    prompt('Copy this payment number:', num);
+                }
+            });
+
+            // Always show the payment note for clarity
+            try { const noteEl = document.getElementById('paymentNote'); if (noteEl) noteEl.style.display = 'block'; } catch (e) {}
+        }
 
         // Payment state and enabling logic
         function enablePlaceOrderIfReady() {
@@ -908,10 +897,9 @@
             const name = document.getElementById('customerName').value;
             const mobile = document.getElementById('customerMobile').value;
             const address = document.getElementById('customerAddress').value;
-            const payment = document.getElementById('paymentMode').value;
 
             // Only allow placing order when user confirms payment and required fields are filled
-            if (name && mobile && address && payment && paymentConfirmed) {
+            if (name && mobile && address && paymentConfirmed) {
                 placeBtn.disabled = false;
             } else {
                 placeBtn.disabled = true;
@@ -922,9 +910,9 @@
         document.getElementById('customerName').addEventListener('input', enablePlaceOrderIfReady);
         document.getElementById('customerMobile').addEventListener('input', enablePlaceOrderIfReady);
         document.getElementById('customerAddress').addEventListener('input', enablePlaceOrderIfReady);
-        document.getElementById('paymentMode').addEventListener('change', enablePlaceOrderIfReady);
+        // paymentMode removed — input changes still validate readiness
 
-        // Helper: attempt to open a UPI/payment intent. On mobile this should open installed apps.
+        // Helper: open a payment intent. On mobile this should open installed payment apps.
         function setPaymentStatus(status) {
             const label = document.getElementById('paymentStatusLabel');
             const confirmBtn = document.getElementById('confirmPaymentBtn');
@@ -938,30 +926,20 @@
             if (notConfirmedBtn) notConfirmedBtn.style.display = status === 'pending' ? 'inline-block' : 'none';
         }
 
-        function openPaymentApp(mode, amount) {
-            // Replace this VPA with your actual merchant VPA if available
-            const MERCHANT_VPA = 'muthumk1516-2@oksbi';
+        function openPaymentApp(amount) {
+            // Single-contact payment flow: use only the phone number to open a payment intent
+            const PAYMENT_CONTACT = '9514157908';
             const MERCHANT_NAME = 'SRI KDM Shop';
-            const MERCHANT_PHONE_UPI = '9514157908';
-
-            // Amount should be a number (no currency symbol)
             const am = Number(amount) || 0;
-            // choose link based on mode
-            let upiUrl;
-            if (mode === 'UPI_PHONE' || mode === 'UPI_PHONE') {
-                // Some UPI apps accept phone@upi or phone@pay; we provide the phone as text and copy fallback
-                upiUrl = `upi://pay?pa=${encodeURIComponent(MERCHANT_PHONE_UPI + '@upi')}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${encodeURIComponent(am)}&cu=INR`;
-            } else {
-                upiUrl = `upi://pay?pa=${encodeURIComponent(MERCHANT_VPA)}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${encodeURIComponent(am)}&cu=INR`;
-            }
 
-            // Mark payment as pending and show confirmation/not-confirmed buttons when user returns
+            // Build a phone-based payment intent using the contact number.
+            const upiUrl = `upi://pay?pa=${encodeURIComponent(PAYMENT_CONTACT + '@upi')}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${encodeURIComponent(am)}&cu=INR`;
+
             paymentPending = true;
             paymentConfirmed = false;
-            localStorage.setItem('srk_pay_pending', JSON.stringify({ mode, amount, ts: Date.now() }));
+            localStorage.setItem('srk_pay_pending', JSON.stringify({ amount: am, ts: Date.now() }));
             setPaymentStatus('pending');
 
-            // Attempt to open UPI intent (mobile) or fallback to new tab
             try { window.open(upiUrl, '_blank'); } catch (e) { window.open(upiUrl); }
         }
 
@@ -969,11 +947,10 @@
             const name = document.getElementById('customerName').value;
             const mobile = document.getElementById('customerMobile').value;
             const address = document.getElementById('customerAddress').value;
-            const payment = document.getElementById('paymentMode').value;
             const notes = document.getElementById('customerNotes').value || '';
 
-            if (!name || !mobile || !address || !payment) {
-                alert('Please fill all required customer fields and choose a payment mode.');
+            if (!name || !mobile || !address) {
+                alert('Please fill all required customer fields.');
                 return;
             }
 
@@ -990,7 +967,7 @@
             const orderRecord = {
                 id: Date.now(),
                 customer: { name, mobile, address },
-                payment: { mode: payment, notes },
+                payment: { contact: '9514157908', notes },
                 items: orderItems,
                 subtotal,
                 total,
@@ -1021,7 +998,7 @@
                 `*📝 Customer Notes:*%0A` +
                 `${encodeURIComponent(notes)}%0A%0A` +
                 `*💳 Payment Information:*%0A` +
-                `Payment Mode: ${payment}%0A` +
+                `Payment Contact: 9514157908%0A` +
                 `Payment Status: ${orderRecord.paymentStatus}%0A`;
             // Append payment note to WhatsApp message
             const paymentNoteText = `%0A*📌 Payment Note:* Please attach your payment screenshot in the WhatsApp message when placing the order.`;
@@ -1038,7 +1015,6 @@
             document.getElementById('customerName').value = '';
             document.getElementById('customerMobile').value = '';
             document.getElementById('customerAddress').value = '';
-            document.getElementById('paymentMode').value = '';
             document.getElementById('paymentDetailsSection').innerHTML = '';
             document.getElementById('customerNotes').value = '';
             paymentConfirmed = false;
