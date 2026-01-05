@@ -933,7 +933,22 @@
             const am = Number(amount) || 0;
 
             // Build a phone-based payment intent using the contact number.
-            const upiUrl = `upi://pay?pa=${encodeURIComponent(PAYMENT_CONTACT + '@upi')}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${encodeURIComponent(am)}&cu=INR`;
+            // Copy the payment contact to clipboard so user can paste it into their app
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(PAYMENT_CONTACT);
+                    alert('Payment number copied to clipboard: ' + PAYMENT_CONTACT + '\nWe will now open your payment app. Paste the number as the payee/recipient to avoid VPA auto-selection.');
+                } else {
+                    // fallback: prompt shows the number for manual copy
+                    prompt('Copy this payment number:', PAYMENT_CONTACT);
+                }
+            } catch (e) {
+                // ignore clipboard failures
+            }
+
+            // Build a generic payment intent WITHOUT a payee VPA (no pa=...), so apps won't auto-select a UPI ID.
+            // Many UPI apps will open when this URL is invoked, but recipient will not be prefilled.
+            const upiUrl = `upi://pay?pn=${encodeURIComponent(MERCHANT_NAME)}&am=${encodeURIComponent(am)}&cu=INR`;
 
             paymentPending = true;
             paymentConfirmed = false;
